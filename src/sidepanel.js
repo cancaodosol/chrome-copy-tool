@@ -7,10 +7,23 @@ import {
 
 const memoList = document.getElementById("memo-list");
 const emptyState = document.getElementById("empty-state");
+const emptyTitle = document.getElementById("empty-title");
+const emptySubtitle = document.getElementById("empty-subtitle");
+const memoView = document.getElementById("memo-view");
+const domainView = document.getElementById("domain-view");
+const domainList = document.getElementById("domain-list");
+const domainEmpty = document.getElementById("domain-empty");
+const tabMemos = document.getElementById("tab-memos");
+const tabDomains = document.getElementById("tab-domains");
+const filterBar = document.getElementById("filter-bar");
+const filterLabel = document.getElementById("filter-label");
+const clearFilter = document.getElementById("clear-filter");
 
 let memos = [];
 let editingId = null;
 const expandedMemoIds = new Set();
+let currentView = "memos";
+let selectedScope = null;
 
 init();
 
@@ -27,6 +40,13 @@ async function init() {
   });
 
   memoList.addEventListener("click", handleListClick);
+  domainList.addEventListener("click", handleDomainClick);
+  tabMemos.addEventListener("click", () => setView("memos"));
+  tabDomains.addEventListener("click", () => setView("domains"));
+  clearFilter.addEventListener("click", () => {
+    selectedScope = null;
+    render();
+  });
 }
 
 async function loadMemos() {
@@ -36,17 +56,76 @@ async function loadMemos() {
 }
 
 function render() {
-  memoList.innerHTML = "";
+  renderMemos();
+  renderDomains();
+  setView(currentView);
+}
 
-  if (memos.length === 0) {
+function renderMemos() {
+  memoList.innerHTML = "";
+  const filteredMemos = getFilteredMemos();
+  const hasFilter = Boolean(selectedScope);
+
+  if (hasFilter) {
+    filterBar.classList.remove("hidden");
+    filterBar.classList.add("flex");
+    filterLabel.textContent = buildFilterLabel(selectedScope);
+  } else {
+    filterBar.classList.add("hidden");
+    filterBar.classList.remove("flex");
+  }
+
+  if (filteredMemos.length === 0) {
     emptyState.classList.remove("hidden");
+    if (hasFilter) {
+      emptyTitle.textContent = "該当するメモがありません";
+      emptySubtitle.classList.add("hidden");
+    } else {
+      emptyTitle.textContent = "まだメモがありません";
+      emptySubtitle.classList.remove("hidden");
+      emptySubtitle.textContent = "テキスト選択 → ショートカットで保存";
+    }
     return;
   }
 
   emptyState.classList.add("hidden");
 
-  memos.forEach((memo) => {
+  filteredMemos.forEach((memo) => {
     memoList.appendChild(buildMemoCard(memo));
+  });
+}
+
+function renderDomains() {
+  domainList.innerHTML = "";
+  const domains = buildDomainSummaries(memos);
+
+  if (domains.length === 0) {
+    domainEmpty.classList.remove("hidden");
+    return;
+  }
+
+  domainEmpty.classList.add("hidden");
+  domains.forEach((item) => {
+    domainList.appendChild(
+      buildDomainRow({
+        label: item.domain,
+        count: item.count,
+        domain: item.domain,
+        type: "domain"
+      })
+    );
+    item.children.forEach((child) => {
+      domainList.appendChild(
+        buildDomainRow({
+          label: `/${child.path}`,
+          count: child.count,
+          domain: item.domain,
+          path: child.path,
+          type: "path",
+          indent: true
+        })
+      );
+    });
   });
 }
 
@@ -220,6 +299,158 @@ async function handleListClick(event) {
     }
     await deleteMemoById(memoId);
   }
+}
+
+function handleDomainClick(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) {
+    return;
+  }
+  const button = target.closest("button[data-domain]");
+  if (!button) {
+    return;
+  }
+  const domain = button.dataset.domain;
+  if (!domain) {
+    return;
+  }
+  const scopeType = button.dataset.scopeType;
+  if (scopeType === "path") {
+    selectedScope = {
+      type: "path",
+      domain,
+      path: button.dataset.path || "/"
+    };
+  } else {
+    selectedScope = { type: "domain", domain };
+  }
+  setView("memos");
+  render();
+}
+
+function setView(view) {
+  currentView = view;
+  memoView.classList.toggle("hidden", view !== "memos");
+  domainView.classList.toggle("hidden", view !== "domains");
+  setTabState(tabMemos, view === "memos");
+  setTabState(tabDomains, view === "domains");
+}
+
+function setTabState(tab, isActive) {
+  tab.classList.toggle("bg-neutral-900", isActive);
+  tab.classList.toggle("text-neutral-100", isActive);
+  tab.classList.toggle("border", !isActive);
+  tab.classList.toggle("border-neutral-200", !isActive);
+  tab.classList.toggle("text-neutral-600", !isActive);
+}
+
+function getFilteredMemos() {
+  if (!selectedScope) {
+    return memos;
+  }
+  return memos.filter((memo) => matchesScope(memo, selectedScope));
+}
+
+function buildDomainSummaries(items) {
+  const map = new Map();
+  items.forEach((memo) => {
+    const { domain, path } = getDomainAndFirstPath(memo.url);
+    const entry = map.get(domain) ?? {
+      domain,
+      count: 0,
+      latestCreatedAt: 0,
+      children: new Map()
+    };
+    entry.count += 1;
+    entry.latestCreatedAt = Math.max(entry.latestCreatedAt, memo.createdAt);
+    const child = entry.children.get(path) ?? {
+      path,
+      count: 0,
+      latestCreatedAt: 0
+    };
+    child.count += 1;
+    child.latestCreatedAt = Math.max(child.latestCreatedAt, memo.createdAt);
+    entry.children.set(path, child);
+    map.set(domain, entry);
+  });
+  return Array.from(map.values())
+    .map((entry) => ({
+      ...entry,
+      children: Array.from(entry.children.values()).sort(
+        (a, b) => b.latestCreatedAt - a.latestCreatedAt
+      )
+    }))
+    .sort((a, b) => b.latestCreatedAt - a.latestCreatedAt);
+}
+
+function buildDomainRow(item) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className =
+    "flex w-full items-center justify-between rounded-md border border-neutral-200 bg-white px-2.5 text-xs text-neutral-800 hover:bg-neutral-50";
+  if (item.indent) {
+    button.className += " border-l-2 border-l-neutral-200 pl-4 py-1.5 ml-2";
+  } else {
+    button.className += " py-2";
+  }
+  button.dataset.domain = item.domain;
+  button.dataset.scopeType = item.type;
+  if (item.type === "path") {
+    button.dataset.path = item.path ?? "/";
+  }
+
+  const label = document.createElement("span");
+  label.className = "flex min-w-0 items-center gap-1";
+
+  if (item.indent) {
+    const marker = document.createElement("span");
+    marker.className = "text-[10px] text-neutral-400";
+    marker.textContent = "|-";
+    label.appendChild(marker);
+  }
+
+  const name = document.createElement("span");
+  name.className = "max-w-[170px] truncate";
+  name.textContent = item.label;
+  label.appendChild(name);
+
+  const count = document.createElement("span");
+  count.className =
+    "rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600";
+  count.textContent = `${item.count}件`;
+
+  button.append(label, count);
+  return button;
+}
+
+function getDomainAndFirstPath(url) {
+  if (!url) {
+    return { domain: "不明", path: "/" };
+  }
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const path = segments.length > 0 ? segments[0] : "/";
+    return { domain: parsed.host, path };
+  } catch {
+    return { domain: "不明", path: "/" };
+  }
+}
+
+function matchesScope(memo, scope) {
+  const parsed = getDomainAndFirstPath(memo.url);
+  if (scope.type === "domain") {
+    return parsed.domain === scope.domain;
+  }
+  return parsed.domain === scope.domain && parsed.path === scope.path;
+}
+
+function buildFilterLabel(scope) {
+  if (scope.type === "domain") {
+    return `ドメイン: ${scope.domain}`;
+  }
+  const pathLabel = scope.path === "/" ? "/" : `/${scope.path}`;
+  return `ドメイン/パス: ${scope.domain}${pathLabel}`;
 }
 
 function buildIconButton({ label, action, memoId, svgPath, className }) {
