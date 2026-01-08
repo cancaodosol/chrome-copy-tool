@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>コピー履歴</title>
+    <link rel="stylesheet" href="./tailwind.css" />
+  </head>
+  <body class="bg-neutral-50 text-neutral-900">
+    <aside class="min-h-screen px-2 py-3">
+      <header class="space-y-1.5 border-b border-neutral-200 pb-3">
+        <h1 class="text-lg font-semibold tracking-tight">コピー履歴</h1>
+        <p class="text-xs text-neutral-500">選択テキストをURL付きで記録</p>
+      </header>
+
+      <main class="pt-3">
+        <section id="empty-state" class="hidden rounded-lg border border-dashed border-neutral-300 bg-white p-3 text-center">
+          <p class="text-xs text-neutral-600">まだメモがありません</p>
+          <p class="mt-1.5 text-[11px] text-neutral-500">テキスト選択 → ショートカットで保存</p>
+        </section>
+
+        <section id="memo-list" class="space-y-2.5"></section>
+      </main>
+
+      <footer class="mt-4 border-t border-neutral-200 pt-3">
+        <p class="text-[11px] text-neutral-500">ショートカット: ⌘/Ctrl + Shift + Y</p>
+      </footer>
+    </aside>
+
+    <script type="module" src="./sidepanel.js"></script>
+  </body>
+</html>

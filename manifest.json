@@ -1,0 +1,27 @@
+{
+  "manifest_version": 3,
+  "name": "コピー履歴",
+  "description": "選択テキストをURL付きで記録するサイドパネル",
+  "version": "0.1.0",
+  "permissions": ["activeTab", "scripting", "storage", "sidePanel"],
+  "action": {
+    "default_title": "コピー履歴"
+  },
+  "background": {
+    "service_worker": "src/background.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel.html",
+    "openPanelOnActionClick": true
+  },
+  "commands": {
+    "save-selection": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+C",
+        "mac": "Command+Shift+C"
+      },
+      "description": "選択テキストをメモとして保存"
+    }
+  }
+}
