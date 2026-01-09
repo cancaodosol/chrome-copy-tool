@@ -18,8 +18,8 @@
   "commands": {
     "save-selection": {
       "suggested_key": {
-        "default": "Ctrl+Shift+C",
-        "mac": "Command+Shift+C"
+        "default": "Alt+C",
+        "mac": "Ctrl+Shift+C"
       },
       "description": "選択テキストをメモとして保存"
     }

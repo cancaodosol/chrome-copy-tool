@@ -18,6 +18,7 @@ const tabDomains = document.getElementById("tab-domains");
 const filterBar = document.getElementById("filter-bar");
 const filterLabel = document.getElementById("filter-label");
 const clearFilter = document.getElementById("clear-filter");
+const shortcutHint = document.getElementById("shortcut-hint");
 
 let memos = [];
 let editingId = null;
@@ -28,6 +29,7 @@ let selectedScope = null;
 init();
 
 async function init() {
+  updateShortcutHint();
   await loadMemos();
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -520,4 +522,13 @@ function formatNumberBadge(number) {
   }
   const padded = String(number).padStart(5, "0");
   return `#${padded}`;
+}
+
+function updateShortcutHint() {
+  if (!shortcutHint) {
+    return;
+  }
+  const isMac = navigator.platform.includes("Mac");
+  const text = isMac ? "Control + Shift + C" : "Alt + C";
+  shortcutHint.textContent = `ショートカット: ${text}`;
 }
