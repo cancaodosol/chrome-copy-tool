@@ -393,7 +393,7 @@ function buildDomainRow(item) {
   if (item.indent) {
     button.className += " border-l-2 border-l-neutral-200 pl-4 py-1.5 ml-2";
   } else {
-    button.className += " py-2";
+    button.className += " py-2 mt-4";
   }
   button.dataset.domain = item.domain;
   button.dataset.scopeType = item.type;
