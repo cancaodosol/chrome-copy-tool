@@ -22,20 +22,6 @@ export async function addMemo(memo) {
   await saveMemos(nextMemos);
 }
 
-export async function updateMemoUrlById(id, nextUrl) {
-  const memos = await getAllMemos();
-  const nextMemos = memos.map((memo) => {
-    if (memo.id !== id) {
-      return memo;
-    }
-    return {
-      ...memo,
-      url: nextUrl
-    };
-  });
-  await saveMemos(nextMemos);
-}
-
 export async function deleteMemoById(id) {
   const memos = await getAllMemos();
   const nextMemos = memos.filter((memo) => memo.id !== id);

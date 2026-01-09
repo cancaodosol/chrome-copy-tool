@@ -1,8 +1,7 @@
 import { formatCreatedAt } from "./domain/memo.js";
 import {
   deleteMemoById,
-  getAllMemos,
-  updateMemoUrlById
+  getAllMemos
 } from "./infrastructure/memoRepository.js";
 
 const memoList = document.getElementById("memo-list");
@@ -21,7 +20,6 @@ const clearFilter = document.getElementById("clear-filter");
 const shortcutHint = document.getElementById("shortcut-hint");
 
 let memos = [];
-let editingId = null;
 const expandedMemoIds = new Set();
 let currentView = "memos";
 let selectedScope = null;
@@ -165,49 +163,14 @@ function buildMemoCard(memo) {
   card.appendChild(numberBadge);
   card.appendChild(deleteButton);
 
-  if (editingId === memo.id) {
-    const input = document.createElement("input");
-    input.className =
-      "mt-2 w-full rounded-md border border-neutral-300 bg-white px-2 px-2 py-1 text-[11px] text-neutral-800 focus:border-neutral-500 focus:outline-none";
-    input.type = "url";
-    input.value = memo.url;
-    input.dataset.memoId = memo.id;
-
-    const actions = document.createElement("div");
-    actions.className = "mt-1.5 flex gap-2";
-
-    const saveButton = document.createElement("button");
-    saveButton.type = "button";
-    saveButton.className =
-      "rounded-md bg-neutral-900 px-2.5 py-1 text-[11px] font-semibold text-neutral-100";
-    saveButton.textContent = "保存";
-    saveButton.dataset.action = "save-url";
-    saveButton.dataset.memoId = memo.id;
-
-    const cancelButton = document.createElement("button");
-    cancelButton.type = "button";
-    cancelButton.className =
-      "rounded-md border border-neutral-300 px-2.5 py-1 text-[11px] text-neutral-600";
-    cancelButton.textContent = "キャンセル";
-    cancelButton.dataset.action = "cancel-edit";
-    cancelButton.dataset.memoId = memo.id;
-
-    actions.append(saveButton, cancelButton);
-
-    card.append(text, input, actions);
-    return card;
-  }
-
-  const urlButton = buildIconButton({
-    label: memo.url ? "リンクを開く" : "URLなし",
-    action: "open-url",
-    memoId: memo.id,
-    svgPath:
-      "M10 13a5 5 0 0 0 7.07 0l2.83-2.83a5 5 0 1 0-7.07-7.07L10 5M14 11a5 5 0 0 1-7.07 0L4.1 8.17a5 5 0 1 1 7.07-7.07L13 3",
-    className:
-      "text-sky-600 hover:text-sky-500"
-  });
-  urlButton.dataset.url = memo.url;
+  const urlLabel = document.createElement("button");
+  urlLabel.type = "button";
+  urlLabel.className =
+    "max-w-[140px] truncate text-[11px] text-sky-600 hover:text-sky-500";
+  urlLabel.textContent = memo.url || "URLなし";
+  urlLabel.dataset.action = "open-url";
+  urlLabel.dataset.url = memo.url;
+  urlLabel.setAttribute("title", memo.url || "");
 
   const dateIcon = buildInfoIcon({
     label: "作成日時",
@@ -217,17 +180,7 @@ function buildMemoCard(memo) {
   const actions = document.createElement("div");
   actions.className = "mt-1 flex items-center justify-end gap-2";
 
-  const editButton = buildIconButton({
-    label: "URL編集",
-    action: "edit-url",
-    memoId: memo.id,
-    svgPath:
-      "M12 20h9M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z",
-    className:
-      "rounded-md border border-neutral-200 p-1 text-neutral-600 hover:border-neutral-300"
-  });
-
-  actions.append(urlButton, editButton, dateIcon);
+  actions.append(urlLabel, dateIcon);
 
   card.append(text, actions);
   return card;
@@ -259,26 +212,6 @@ async function handleListClick(event) {
     return;
   }
 
-  if (action === "edit-url") {
-    editingId = memoId;
-    render();
-    return;
-  }
-
-  if (action === "cancel-edit") {
-    editingId = null;
-    render();
-    return;
-  }
-
-  if (action === "save-url") {
-    const input = memoList.querySelector(`input[data-memo-id="${memoId}"]`);
-    const nextUrl = input instanceof HTMLInputElement ? input.value.trim() : "";
-    await updateMemoUrlById(memoId, nextUrl);
-    editingId = null;
-    return;
-  }
-
   if (action === "delete") {
     const ok = window.confirm("このメモを削除しますか？");
     if (!ok) {
@@ -301,7 +234,7 @@ function handleListDblClick(event) {
     return;
   }
   const memoId = card.dataset.memoId;
-  if (!memoId || editingId === memoId) {
+  if (!memoId) {
     return;
   }
   if (expandedMemoIds.has(memoId)) {
