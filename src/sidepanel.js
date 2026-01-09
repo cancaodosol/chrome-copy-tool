@@ -347,8 +347,10 @@ function setView(view) {
 }
 
 function setTabState(tab, isActive) {
-  tab.classList.toggle("bg-neutral-900", isActive);
-  tab.classList.toggle("text-neutral-100", isActive);
+  tab.classList.toggle("border-2", isActive);
+  tab.classList.toggle("border-neutral-900", isActive);
+  tab.classList.toggle("font-semibold", isActive);
+  tab.classList.toggle("text-neutral-900", isActive);
   tab.classList.toggle("border", !isActive);
   tab.classList.toggle("border-neutral-200", !isActive);
   tab.classList.toggle("text-neutral-600", !isActive);
