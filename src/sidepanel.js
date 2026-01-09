@@ -42,6 +42,7 @@ async function init() {
   });
 
   memoList.addEventListener("click", handleListClick);
+  memoList.addEventListener("dblclick", handleListDblClick);
   domainList.addEventListener("click", handleDomainClick);
   tabMemos.addEventListener("click", () => setView("memos"));
   tabDomains.addEventListener("click", () => setView("domains"));
@@ -239,23 +240,6 @@ async function handleListClick(event) {
 
   const button = target.closest("button[data-action]");
   if (!button) {
-    if (target.closest("input")) {
-      return;
-    }
-    const card = target.closest("article[data-memo-id]");
-    if (!card) {
-      return;
-    }
-    const memoId = card.dataset.memoId;
-    if (!memoId || editingId === memoId) {
-      return;
-    }
-    if (expandedMemoIds.has(memoId)) {
-      expandedMemoIds.delete(memoId);
-    } else {
-      expandedMemoIds.add(memoId);
-    }
-    render();
     return;
   }
 
@@ -301,6 +285,30 @@ async function handleListClick(event) {
     }
     await deleteMemoById(memoId);
   }
+}
+
+function handleListDblClick(event) {
+  const target = event.target instanceof Element ? event.target : null;
+  if (!target) {
+    return;
+  }
+  if (target.closest("button") || target.closest("input")) {
+    return;
+  }
+  const card = target.closest("article[data-memo-id]");
+  if (!card) {
+    return;
+  }
+  const memoId = card.dataset.memoId;
+  if (!memoId || editingId === memoId) {
+    return;
+  }
+  if (expandedMemoIds.has(memoId)) {
+    expandedMemoIds.delete(memoId);
+  } else {
+    expandedMemoIds.add(memoId);
+  }
+  render();
 }
 
 function handleDomainClick(event) {
