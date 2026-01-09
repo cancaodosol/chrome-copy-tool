@@ -117,7 +117,7 @@ function renderDomains() {
         type: "domain"
       })
     );
-    item.children.forEach((child) => {
+    item.children.forEach((child, index) => {
       domainList.appendChild(
         buildDomainRow({
           label: `/${child.path}`,
@@ -125,7 +125,8 @@ function renderDomains() {
           domain: item.domain,
           path: child.path,
           type: "path",
-          indent: true
+          indent: true,
+          isLast: index === item.children.length - 1
         })
       );
     });
@@ -316,8 +317,19 @@ function handleDomainClick(event) {
   if (!target) {
     return;
   }
-  const button = target.closest("button[data-domain]");
+  const button = target.closest("button[data-action]");
   if (!button) {
+    return;
+  }
+  const action = button.dataset.action;
+  if (action === "open-url") {
+    const url = button.dataset.url;
+    if (url) {
+      chrome.tabs.create({ url });
+    }
+    return;
+  }
+  if (action !== "filter") {
     return;
   }
   const domain = button.dataset.domain;
@@ -396,43 +408,47 @@ function buildDomainSummaries(items) {
 }
 
 function buildDomainRow(item) {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.className =
+  const row = document.createElement("div");
+  row.className =
     "flex w-full items-center justify-between rounded-md border border-neutral-200 bg-white px-2.5 text-xs text-neutral-800 hover:bg-neutral-50";
   if (item.indent) {
-    button.className += " border-l-2 border-l-neutral-200 pl-4 py-1.5 ml-2";
+    row.className += " border-l-2 border-l-neutral-200 pl-4 py-1.5 ml-2";
   } else {
-    button.className += " py-2 mt-4";
-  }
-  button.dataset.domain = item.domain;
-  button.dataset.scopeType = item.type;
-  if (item.type === "path") {
-    button.dataset.path = item.path ?? "/";
+    row.className += " py-2 mt-4";
   }
 
-  const label = document.createElement("span");
-  label.className = "flex min-w-0 items-center gap-1";
+  const nameButton = document.createElement("button");
+  nameButton.type = "button";
+  nameButton.className = "flex min-w-0 items-center gap-1 text-left";
+  nameButton.dataset.action = "open-url";
+  nameButton.dataset.url = buildScopeUrl(item);
 
   if (item.indent) {
     const marker = document.createElement("span");
     marker.className = "text-[10px] text-neutral-400";
-    marker.textContent = "|-";
-    label.appendChild(marker);
+    marker.textContent = item.isLast ? "└─" : "├─";
+    nameButton.appendChild(marker);
   }
 
   const name = document.createElement("span");
   name.className = "max-w-[170px] truncate";
   name.textContent = item.label;
-  label.appendChild(name);
+  nameButton.appendChild(name);
 
-  const count = document.createElement("span");
-  count.className =
-    "rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600";
-  count.textContent = `${item.count}件`;
+  const countButton = document.createElement("button");
+  countButton.type = "button";
+  countButton.className =
+    "rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-semibold text-neutral-600 hover:text-neutral-800";
+  countButton.textContent = `${item.count}件`;
+  countButton.dataset.action = "filter";
+  countButton.dataset.domain = item.domain;
+  countButton.dataset.scopeType = item.type;
+  if (item.type === "path") {
+    countButton.dataset.path = item.path ?? "/";
+  }
 
-  button.append(label, count);
-  return button;
+  row.append(nameButton, countButton);
+  return row;
 }
 
 function getDomainAndFirstPath(url) {
@@ -447,6 +463,14 @@ function getDomainAndFirstPath(url) {
   } catch {
     return { domain: "不明", path: "/" };
   }
+}
+
+function buildScopeUrl(item) {
+  if (item.type === "path") {
+    const path = item.path && item.path !== "/" ? `/${item.path}` : "/";
+    return `https://${item.domain}${path}`;
+  }
+  return `https://${item.domain}/`;
 }
 
 function matchesScope(memo, scope) {
