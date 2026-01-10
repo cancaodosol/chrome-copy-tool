@@ -18,16 +18,23 @@ const filterBar = document.getElementById("filter-bar");
 const filterLabel = document.getElementById("filter-label");
 const clearFilter = document.getElementById("clear-filter");
 const shortcutHint = document.getElementById("shortcut-hint");
+const deleteModal = document.getElementById("delete-modal");
+const deleteSkip = document.getElementById("delete-skip");
+const deleteCancel = document.getElementById("delete-cancel");
+const deleteConfirm = document.getElementById("delete-confirm");
 
 let memos = [];
 const expandedMemoIds = new Set();
 let currentView = "memos";
 let selectedScope = null;
+let deleteConfirmDisabled = false;
+let pendingDeleteId = null;
 
 init();
 
 async function init() {
   updateShortcutHint();
+  await loadDeletePreference();
   await loadMemos();
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -48,6 +55,8 @@ async function init() {
     selectedScope = null;
     render();
   });
+  deleteCancel.addEventListener("click", closeDeleteModal);
+  deleteConfirm.addEventListener("click", confirmDelete);
 }
 
 async function loadMemos() {
@@ -213,11 +222,11 @@ async function handleListClick(event) {
   }
 
   if (action === "delete") {
-    const ok = window.confirm("このメモを削除しますか？");
-    if (!ok) {
+    if (deleteConfirmDisabled) {
+      await deleteMemoById(memoId);
       return;
     }
-    await deleteMemoById(memoId);
+    openDeleteModal(memoId);
   }
 }
 
@@ -498,4 +507,41 @@ function updateShortcutHint() {
   const isMac = navigator.platform.includes("Mac");
   const text = isMac ? "Control + Shift + C" : "Alt + C";
   shortcutHint.textContent = `ショートカット: ${text}`;
+}
+
+async function loadDeletePreference() {
+  const result = await chrome.storage.local.get("deleteConfirmDisabled");
+  deleteConfirmDisabled = Boolean(result.deleteConfirmDisabled);
+}
+
+function openDeleteModal(memoId) {
+  if (!deleteModal || !deleteSkip) {
+    return;
+  }
+  pendingDeleteId = memoId;
+  deleteSkip.checked = false;
+  deleteModal.classList.remove("hidden");
+  deleteModal.classList.add("flex");
+}
+
+function closeDeleteModal() {
+  if (!deleteModal) {
+    return;
+  }
+  deleteModal.classList.add("hidden");
+  deleteModal.classList.remove("flex");
+  pendingDeleteId = null;
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteId) {
+    closeDeleteModal();
+    return;
+  }
+  if (deleteSkip && deleteSkip.checked) {
+    deleteConfirmDisabled = true;
+    await chrome.storage.local.set({ deleteConfirmDisabled: true });
+  }
+  await deleteMemoById(pendingDeleteId);
+  closeDeleteModal();
 }
